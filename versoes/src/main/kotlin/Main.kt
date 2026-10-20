@@ -1,52 +1,82 @@
 
+import model.Movimento
+
 fun main() {
+    val lista = mutableListOf<Movimento>()
+
     while (true) {
-        val cmd: String = readln()
-        val partes = cmd.trim().split(Regex("\\s+"))
+        val cmd = readlnOrNull() ?: break
+        if (cmd.isBlank()) continue
 
-        if (partes.isEmpty()) {
-            continue
-        }
-
-        val comando = partes[0]
-
-        when (comando) {
-            "i" -> inserir(cmd)
-            "l" -> listar(cmd)
-            "r" -> remover(cmd)
-            "b" -> calcularBalanco(cmd)
-            "m" -> definirMinimo(cmd)
-            "v" -> validar(cmd)
-            "w" -> procurarData(cmd)
-            else -> println("Comando invalido")
+        when (cmd.trim().split(Regex("\\s+"))[0]) {
+            "i" -> inserir(cmd, lista)
+            "l" -> listar(cmd, lista)
+            "r" -> remover(cmd, lista)
+            else -> println("Comando ainda nao implementado")
         }
     }
 }
 
-fun inserir(cmd: String) {
-    println("Comando: i")
+fun inserir(cmd: String, lista: MutableList<Movimento>) {
+    val p = cmd.trim().split(Regex("\\s+"))
+
+    if (p.size != 6) return
+
+    val montante = p[1].toLongOrNull() ?: return
+    val data = p[2].toIntOrNull() ?: return
+    val periodicidade = p[3].toIntOrNull() ?: return
+    val tipo = p[4]
+    val descricao = p[5]
+
+    if (montante < 0 || data !in 0..999 ||
+        periodicidade < 0 || tipo !in listOf("r", "d") ||
+        descricao.length > 60
+    ) return
+
+    lista.add(
+        Movimento(montante, data, periodicidade, tipo, descricao)
+    )
 }
 
-fun listar(cmd: String) {
-    println("Comando: l")
+fun listar(cmd: String, lista: List<Movimento>) {
+    val p = cmd.trim().split(Regex("\\s+"))
+    if (p.size != 2) return
+
+    val data = p[1].toIntOrNull() ?: return
+    if (data !in 0..999) return
+
+    val movimentosDoDia = lista.filter {
+        data >= it.data &&
+                (if (it.periodicidade == 0) {
+                    data == it.data
+                } else {
+                    (data - it.data) % it.periodicidade == 0
+                })
+    }
+
+    movimentosDoDia.forEachIndexed { index, movimento ->
+        println("$index $movimento")
+    }
 }
 
-fun remover(cmd: String) {
-    println("Comando: r")
-}
+fun remover(cmd: String, lista: MutableList<Movimento>) {
+    val p = cmd.trim().split(Regex("\\s+"))
+    if (p.size != 3) return
 
-fun calcularBalanco(cmd: String) {
-    println("Comando: b")
-}
+    val data = p[1].toIntOrNull() ?: return
+    val indice = p[2].toIntOrNull() ?: return
 
-fun definirMinimo(cmd: String) {
-    println("Comando: m")
-}
+    if (data !in 0..999 || indice < 0) return
 
-fun validar(cmd: String) {
-    println("Comando: v")
-}
+    val movimentosDoDia = lista.filter {
+        data >= it.data &&
+                (if (it.periodicidade == 0) {
+                    data == it.data
+                } else {
+                    (data - it.data) % it.periodicidade == 0
+                })
+    }
 
-fun procurarData(cmd: String) {
-    println("Comando: w")
+    val movimento = movimentosDoDia.getOrNull(indice) ?: return
+    lista.remove(movimento)
 }
