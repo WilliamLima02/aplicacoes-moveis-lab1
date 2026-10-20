@@ -16,27 +16,33 @@ class SistemaOrcamento {
             val linha = readlnOrNull() ?: break
             val cmd = linha.trim()
             if (cmd.isEmpty()) continue
+
             val partes = cmd.split(Regex("\\s+"))
             when (partes[0]) {
                 "u" -> iniciarSessao(partes)
                 "exit" -> terminarSessao()
-                "sair" -> break
-                else -> executarComando(cmd)
+                else -> executarComando(cmd, partes[0])
             }
         }
     }
 
     private fun iniciarSessao(partes: List<String>) {
+        if (partes.size != 3) return
+
         val email = partes[1]
         val password = partes[2]
+        if (email.isBlank() || password.isBlank()) return
+
         val existente = utilizadores[email]
         if (existente != null && existente.password != password) {
-            println("Credenciais invalidas")
+            // The specification does not prescribe output for invalid credentials.
             return
         }
+
         val utilizador = existente ?: Utilizador(email, password).also {
             utilizadores[email] = it
         }
+
         utilizadorAtual?.sessaoAtiva = null
         val sessao = Sessao(criarToken(), LocalDateTime.now())
         utilizador.sessoes.add(sessao)
@@ -62,15 +68,15 @@ class SistemaOrcamento {
         utilizadorAtual = null
     }
 
-    private fun executarComando(cmd: String) {
+    private fun executarComando(cmd: String, nome: String) {
         val utilizador = utilizadorAtual ?: return
-        when (cmd.split(Regex("\\s+"))[0]) {
+        when (nome) {
             "i" -> utilizador.orcamento.inserir(cmd)
             "l" -> utilizador.orcamento.listar(cmd)
             "r" -> utilizador.orcamento.remover(cmd)
             "b" -> utilizador.orcamento.calcularBalanco(cmd)
             "m" -> utilizador.orcamento.alterarSaldoMinimo(cmd)
-            "v" -> utilizador.orcamento.validarOrcamento()
+            "v" -> if (cmd.trim() == "v") utilizador.orcamento.validarOrcamento()
             "w" -> utilizador.orcamento.procurarDataPossivel(cmd)
         }
     }
