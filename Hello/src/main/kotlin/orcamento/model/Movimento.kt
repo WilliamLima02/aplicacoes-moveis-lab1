@@ -1,4 +1,4 @@
-package orcamento.movimentos
+package orcamento.model
 
 data class Movimento(
     val montante: Long,
@@ -10,17 +10,17 @@ data class Movimento(
 
 class GestorMovimentos {
     private val movimentos = mutableListOf<Movimento>()
-    private var saldoMinimo: Long = 0L
+    var saldoMinimo: Long = 0L
+        private set
 
     fun inserir(cmd: String) {
-        val partes = cmd.trim().split(Regex("\\s+"))
-        val montante = partes[1].toLong()
-        val dataInicial = partes[2].toInt()
-        val periodicidade = partes[3].toInt()
-        val tipo = partes[4]
-        val descricao = partes[5]
+        val p = cmd.trim().split(Regex("\\s+"))
+        val montante = p[1].toLong()
+        val dataInicial = p[2].toInt()
+        val periodicidade = p[3].toInt()
+        val tipo = p[4]
+        val descricao = p[5]
         var data = dataInicial
-
         while (data <= 999) {
             movimentos.add(Movimento(montante, data, periodicidade, tipo, descricao))
             if (periodicidade == 0) break
@@ -29,40 +29,33 @@ class GestorMovimentos {
     }
 
     fun listar(cmd: String) {
-        val partes = cmd.trim().split(Regex("\\s+"))
-        val data = partes[1].toInt()
+        val data = cmd.trim().split(Regex("\\s+"))[1].toInt()
         val encontrados = movimentos.filter { it.data == data }
-
-        for ((indice, movimento) in encontrados.withIndex()) {
-            println("$indice ${movimento.montante} ${movimento.tipo} ${movimento.descricao}")
+        for ((indice, m) in encontrados.withIndex()) {
+            println("$indice ${m.montante} ${m.tipo} ${m.descricao}")
         }
     }
 
     fun remover(cmd: String) {
-        val partes = cmd.trim().split(Regex("\\s+"))
-        val data = partes[1].toInt()
-        val indice = partes[2].toInt()
+        val p = cmd.trim().split(Regex("\\s+"))
+        val data = p[1].toInt()
+        val indice = p[2].toInt()
         val encontrados = movimentos.filter { it.data == data }
-
         if (indice in encontrados.indices) {
-            val escolhido = encontrados[indice]
-            val indiceGlobal = movimentos.indexOfFirst { it === escolhido }
-            if (indiceGlobal != -1) movimentos.removeAt(indiceGlobal)
+            val alvo = encontrados[indice]
+            val global = movimentos.indexOfFirst { it === alvo }
+            if (global >= 0) movimentos.removeAt(global)
         }
     }
 
     private fun calcularBalancos(): LongArray {
-        val balancos = LongArray(1000)
-
-        for (movimento in movimentos) {
-            val impacto = if (movimento.tipo == "r") movimento.montante else -movimento.montante
-            balancos[movimento.data] += impacto
+        val b = LongArray(1000)
+        for (m in movimentos) {
+            val impacto = if (m.tipo == "r") m.montante else -m.montante
+            b[m.data] += impacto
         }
-
-        for (data in 1..999) {
-            balancos[data] += balancos[data - 1]
-        }
-        return balancos
+        for (data in 1..999) b[data] += b[data - 1]
+        return b
     }
 
     fun calcularBalanco(cmd: String) {
@@ -75,8 +68,8 @@ class GestorMovimentos {
     }
 
     fun validarOrcamento() {
-        for (balanco in calcularBalancos()) {
-            if (balanco < saldoMinimo) {
+        for (b in calcularBalancos()) {
+            if (b < saldoMinimo) {
                 println("Invalido")
                 return
             }
@@ -85,17 +78,15 @@ class GestorMovimentos {
     }
 
     fun procurarDataPossivel(cmd: String) {
-        val partes = cmd.trim().split(Regex("\\s+"))
-        val dataInicial = partes[1].toInt()
-        val despesa = partes[2].toLong()
+        val p = cmd.trim().split(Regex("\\s+"))
+        val inicio = p[1].toInt()
+        val despesa = p[2].toLong()
         val balancos = calcularBalancos()
-
         if (balancos.any { it < saldoMinimo }) {
             println("Incomportavel")
             return
         }
-
-        for (data in dataInicial..999) {
+        for (data in inicio..999) {
             var possivel = true
             for (dia in data..999) {
                 if (balancos[dia] - despesa < saldoMinimo) {

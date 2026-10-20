@@ -1,24 +1,26 @@
 package orcamento.app
 
-import orcamento.modelo.Sessao
-import orcamento.modelo.Utilizador
+import orcamento.model.Sessao
+import orcamento.model.Utilizador
 import java.security.MessageDigest
 import java.time.LocalDateTime
 import java.util.UUID
 
 class SistemaOrcamento {
     private val utilizadores = mutableMapOf<String, Utilizador>()
+    private val tokensEmitidos = mutableSetOf<String>()
     private var utilizadorAtual: Utilizador? = null
 
     fun executar() {
         while (true) {
-            val cmd = readlnOrNull() ?: break
-            if (cmd.isBlank()) continue
-
-            val partes = cmd.trim().split(Regex("\\s+"))
+            val linha = readlnOrNull() ?: break
+            val cmd = linha.trim()
+            if (cmd.isEmpty()) continue
+            val partes = cmd.split(Regex("\\s+"))
             when (partes[0]) {
                 "u" -> iniciarSessao(partes)
                 "exit" -> terminarSessao()
+                "sair" -> break
                 else -> executarComando(cmd)
             }
         }
@@ -28,16 +30,13 @@ class SistemaOrcamento {
         val email = partes[1]
         val password = partes[2]
         val existente = utilizadores[email]
-
         if (existente != null && existente.password != password) {
             println("Credenciais invalidas")
             return
         }
-
         val utilizador = existente ?: Utilizador(email, password).also {
             utilizadores[email] = it
         }
-
         utilizadorAtual?.sessaoAtiva = null
         val sessao = Sessao(criarToken(), LocalDateTime.now())
         utilizador.sessoes.add(sessao)
@@ -46,10 +45,15 @@ class SistemaOrcamento {
     }
 
     private fun criarToken(): String {
-        val valorAleatorio = UUID.randomUUID().toString()
-        val bytes = MessageDigest.getInstance("SHA-256")
-            .digest(valorAleatorio.toByteArray(Charsets.UTF_8))
-        return bytes.joinToString("") { "%02x".format(it) }
+        while (true) {
+            val valor = UUID.randomUUID().toString()
+            val bytes = MessageDigest.getInstance("SHA-256")
+                .digest(valor.toByteArray(Charsets.UTF_8))
+            val token = bytes.joinToString("") {
+                "%02x".format(it.toInt() and 0xff)
+            }
+            if (tokensEmitidos.add(token)) return token
+        }
     }
 
     private fun terminarSessao() {
@@ -60,7 +64,7 @@ class SistemaOrcamento {
 
     private fun executarComando(cmd: String) {
         val utilizador = utilizadorAtual ?: return
-        when (cmd.trim().split(Regex("\\s+"))[0]) {
+        when (cmd.split(Regex("\\s+"))[0]) {
             "i" -> utilizador.orcamento.inserir(cmd)
             "l" -> utilizador.orcamento.listar(cmd)
             "r" -> utilizador.orcamento.remover(cmd)
